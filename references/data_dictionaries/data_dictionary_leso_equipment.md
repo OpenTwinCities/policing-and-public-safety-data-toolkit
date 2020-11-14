@@ -1,7 +1,8 @@
-# Defense Logistics Agency LESO Public Information
+# Defense Logistics Agency LESO Public Information  
 
-## DISP_AllStatesAndTerritorie_mmddyyyy.xlsx  
-    Snapshot of DoD inventory possessed by law enforcement agencies published quarterly with each sheet containing data for one state or territory.  
+## DISP_AllStatesAndTerritories_mmddyyyy.xlsx  
+Snapshot of DoD inventory possessed by law enforcement agencies published quarterly with each sheet containing data for one state or territory. Used by [police equipment notebooks](../../notebooks/police_equipment/)  
+
 ### Standard Fields   
 | Field | Data Type | Description | Length | Expected Pattern | null? |   
 | ----- | ---- | ---- | ---- | ---- |---- |   
@@ -18,7 +19,7 @@
 | Station Type | string | level of government associated with requesting agency; needs further research | 5 | 'State' | no |   
 
 ## DISP_Shipments_Cancellations_mmddyyyy_to_mmddyyyy.xlsx  
-    Shipments and cancellations of requests for DoD materials in the specified quarter.   
+Shipments and cancellations of requests for DoD materials in the specified quarter.   
 
 ### Standard Fields (Shipments sheet of the file)   
 | Field | Data Type | Description | Length | Expected Pattern | null? |   

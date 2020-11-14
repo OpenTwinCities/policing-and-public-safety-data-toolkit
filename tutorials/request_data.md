@@ -1,6 +1,5 @@
 # How to Request Data
-
-> I’ve looked around and I can’t find the data I’m interested in. How do I request it?  Or does it already exist, but it’s in a format that’s not electronically readable? You may be able to request it in an alternative format.
+**I’ve looked around and I can’t find the data I’m interested in. How do I request it?  Or does it already exist, but it’s in a format that’s not electronically readable? You may be able to request it in an alternative format.**  
 
 ## National legislation related to policing and open data
 

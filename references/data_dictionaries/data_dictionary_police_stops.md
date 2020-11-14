@@ -1,6 +1,7 @@
-# Police Stops Data Dictionary
+# Police Stops Data Dictionary  
+Data about police stops of drivers and pedestrians. Used by [police_stop notebooks](../../notebooks/police_stops/)  
 
-### Standard fields
+### Standard fields  
 | Field | Data Type | Description | Length | Expected Pattern | null? |  
 | ----- | ---- | ---- | ---- | ---- |---- |  
 | stop_date | datetime | The date and time when the stop occurred. | 19 | YYYY/MM/DD HH24:MM:SS |no |  
@@ -15,7 +16,7 @@
 | arrest_made | string | Was the person being stopped arrested? | 1 | ('y','n','u') | yes |  
 | reason_for_stop | string | What was the reasong for the stop? | varies | varies, 'Unknown' | yes |  
 
-### Extended fields
+### Extended fields  
 | Field | Data Type | Description | Length | Expected Pattern | null? |  
 | ----- | ---- | ---- | ---- | ---- |---- |  
 | stop_latitude | string | Latitude of where the stop occurred. | 9-10 | DDD MM SS('N','S','E','W') |---- |  

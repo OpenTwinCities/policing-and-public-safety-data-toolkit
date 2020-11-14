@@ -34,18 +34,18 @@ Only host data in this GitHub repository if absolutely necessary (for example, i
 **notebooks/**  
 Templates, separated by topic folder, that act as examples of the kinds of analysis and storytelling you can do with some of the common types of policing and public safety data that are available for many cities/states/regions. Ideally, these should be structured so that others can look at the notebook, repoint it to a different data source from a different city/state/region, and adapt it for local use. When a notebook is ready to publish, it should be rendered as .HTML and saved to the corresponding location in the reports/ folder.  
 ```pre
+├── arrests
+├── emergency_911
+├── hate_crime
+├── non_emergency_incidents ← 311 calls/reports, non-emergency incident reports
+├── police_equipment ← supply lines, LESO data, equipment budgets, etc.
 ├── police_stops
 │   ├── police_stops.Rmd
 │   └── police_stops.ipynb
-├── non_emergency_incidents ← 311 calls/reports, non-emergency incident reports
-├── emergency_911
-├── use_of_force
-├── arrests
-├── warrants
-├── police_equipment ← supply lines, LESO data, equipment budgets, etc.
 ├── police_personnel_records ← police force demographics, misconduct records, contracts, training
-└── hate_crime
-```  
+├── use_of_force
+└── warrants
+```
 
 **references/**  
 Data dictionaries to help understand commonly-found data elements present in different types of policing and public safety datasets, data source lists (by state) and additional resource links.  
@@ -63,17 +63,17 @@ Data dictionaries to help understand commonly-found data elements present in dif
 **reports/**  
 Rendered notebooks in .HTML format, separated by topic folder. Reports in this folder are intended to be viewable in a web browser.  Keep your naming structure consistent between this folder and the notebooks/ folder.  
 ```pre
+├── arrests
+├── emergency_911
+├── hate_crime
+├── non_emergency_incidents ← 311 calls/reports, non-emergency incident reports
+├── police_equipment ← supply lines, LESO data, equipment budgets, etc.
 ├── police_stops
 │   └── police_stops.html
-├── non_emergency_incidents ← 311 calls/reports, non-emergency incident reports
-├── emergency_911
-├── use_of_force
-├── arrests
-├── warrants
-├── police_equipment ← supply lines, LESO data, equipment budgets, etc.
 ├── police_personnel_records ← police force demographics, misconduct records, contracts, training
-└── hate_crime
-```  
+├── use_of_force
+└── warrants
+```
 
 **tutorials/**  
 Tutorials addressing important topics in policing and public safety data to help civic technologists understand, approach, and advocate for effective use of this data.  
