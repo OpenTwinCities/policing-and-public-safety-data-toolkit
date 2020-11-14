@@ -1,0 +1,27 @@
+.DS_Store
+
+
+# R artifacts to ignore
+
+## History files
+.Rhistory
+.Rapp.history
+
+## Session Data files
+.RData
+
+## User-specific files
+.Ruserdata
+
+## R Environment Variables
+.Renviron
+
+
+# Python artifacts to ignore
+
+## Jupyter Notebook
+.ipynb_checkpoints
+
+## IPython
+profile_default/
+ipython_config.py
