@@ -1,0 +1,248 @@
+---
+title: "Police Militarization in Minnesota: A Look at LESO Public Information"
+output: 
+  html_notebook:
+    code_folding: hide
+---
+
+```{r, warning=FALSE, message=FALSE, error=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(ggthemes)
+library(readxl)
+library(plotly)
+library(lubridate)
+library(RColorBrewer)
+library(scales)
+library(stringr)
+options(scipen=999) # don't use scientific notation
+```
+
+## Data background and prep
+
+According to [10 U.S. Code § 2576a](https://www.law.cornell.edu/uscode/text/10/2576a), "the Secretary of Defense may transfer to Federal and State agencies personal property of the Department of Defense, including small arms and ammunition, that the Secretary determines is: (A) suitable for use by the agencies in law enforcement activities, including counterdrug, counterterrorism, and border security activities; and (B) excess to the needs of the Department of Defense."  
+
+Interestingly, section (e) of this law also clearly spells out the requirements for making data about these property transfers open and accessible to the public.  The law mandates that "[t]he Secretary shall create and maintain a publicly available Internet website that provides information on the controlled property transferred under this section and the recipients of such property."  That website is located [here](https://www.dla.mil/DispositionServices/Offers/Reutilization/LawEnforcement/PublicInformation/).  Analyzing the available data can provide some interesting insights into how military-grade equipment is made available to civilian law enforcement agencies.
+
+The LESO public information website explains that the records they make available have been pulled for fiscal year 2017 and onwards--the time window required by law. A look at the "LESO Property Transferred to Participating Agencies" dataset, however, reveals data for Minnesota going back as far as 1994.  We need to keep in mind, though, that data prior to FY17 may not be complete. 
+
+```{r}
+mn_equip_transfers <- read_excel("./data/LESO_public_information/DISP_AllStatesAndTerritories_03312020.xlsx", sheet="Minnesota")
+
+names(mn_equip_transfers) <- make.names(names(mn_equip_transfers), unique=TRUE) # Automatically clean up column names
+
+mn_equip_transfers$Ship.Date <- as.Date(mn_equip_transfers$Ship.Date)
+
+mn_equip_transfers <- mn_equip_transfers %>%
+  mutate(Ship.Year = year(Ship.Date),
+         Ship.Month = month(Ship.Date),
+         LEA_name_cleaned = str_remove_all(Station.Name..LEA., "(POLICE DEPARTMENT)|(POLICE DEPT)|(SHERIFF OFFICE)|(SHERIFF'S OFFICE)|(SHERIFFS OFFICE)|(SHERIFF)|(SHERIFF DEPT)|(PD)"))
+```
+
+
+## Analysis of equipment transfer trends
+
+### Which Minnesota agencies have had the highest volume of equipment transfers in recent years?
+
+```{r, message=FALSE, fig.width=5, fig.height=4}
+top_acquiring_agencies <- mn_equip_transfers %>%
+  filter(Ship.Year >= 2015 & Ship.Year < 2020) %>%
+  group_by(Station.Name..LEA.) %>%
+  summarise(sum_total_acquisitions = sum(Acquisition.Value)) %>%
+  top_n(25) %>%
+  arrange(desc(sum_total_acquisitions))
+
+mn_equip_transfers %>%
+  filter(Station.Name..LEA. %in% top_acquiring_agencies$Station.Name..LEA. &
+           Ship.Year >= 2015 & Ship.Year < 2020) %>%
+  mutate(Station.Name..LEA. = factor(Station.Name..LEA., levels=top_acquiring_agencies$Station.Name..LEA.)) %>%
+  group_by(Station.Name..LEA., Ship.Year) %>%
+  summarise(sum_total_acquisitions = sum(Acquisition.Value)) %>%
+ggplot(., aes(x=Station.Name..LEA., y=sum_total_acquisitions, fill=as.factor(Ship.Year))) +
+  geom_bar(stat="identity", position="stack", color="#ffffff") +
+  geom_text(aes(label=Ship.Year), position = position_stack(vjust = 0.5), size=2.5) +
+  scale_fill_brewer(palette = "Blues", name = "Acquisition Year") +
+  scale_y_continuous(label=comma) +
+  xlab(NULL) +
+  ylab("Total acquisition value") +
+  labs(title="Top 25 Minnesota law enforcement agencies for Dept. of Defense equipment transfers (2015 - 2019)",
+       subtitle="Based on total value of goods acquired",
+       caption="Data Source: Defense Logistics Agency, LESO Public Information, 'LESO Property Transferred to Participating Agencies'.\nhttps://www.dla.mil/DispositionServices/Offers/Reutilization/LawEnforcement/PublicInformation") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5), 
+        plot.caption = element_text(hjust = 0))
+```
+
+
+### What are the most popular items across all agencies in the state?
+
+```{r, message=FALSE, fig.width=5, fig.height=4}
+mn_equip_transfers %>%
+  filter(Ship.Year >= 2015 & Ship.Year < 2020) %>%
+  group_by(Item.Name) %>%
+  summarise(count = sum(Quantity)) %>%
+  arrange(desc(count)) %>%
+  top_n(25) %>%
+ggplot(., aes(x=reorder(Item.Name, -count), y=count)) +
+  geom_bar(stat="identity") +
+  scale_y_continuous(label=comma) +
+  xlab(NULL) +
+  ylab('Count of items') +
+  labs(title="Top 25 most popular items transferred from Dept. of Defense to MN law enforcement agencies (2015-2019)",
+       subtitle="Based on count of items acquired",
+       caption="Data Source: Defense Logistics Agency, LESO Public Information, 'LESO Property Transferred to Participating Agencies'.\nhttps://www.dla.mil/DispositionServices/Offers/Reutilization/LawEnforcement/PublicInformation") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+        plot.caption = element_text(hjust = 0))
+```
+
+
+### What are the "big ticket" items across all agencies in the state?
+
+```{r, message=FALSE, fig.width=5, fig.height=4}
+mn_equip_transfers %>%
+  filter(Ship.Year >= 2015 & Ship.Year < 2020) %>%
+  group_by(Item.Name) %>%
+  summarise(sum_acquisition_value = sum(Acquisition.Value)) %>%
+  arrange(desc(sum_acquisition_value)) %>%
+  top_n(25) %>%
+ggplot(., aes(x=reorder(Item.Name, -sum_acquisition_value), y=sum_acquisition_value)) +
+  geom_bar(stat="identity") +
+  scale_y_continuous(label=comma) +
+  xlab(NULL) +
+  ylab('Total acquisition value') +
+  labs(title="Top 25 'big ticket' items transferred from Dept. of Defense to MN law enforcement agencies (2015-2019)",
+       subtitle="Based on value of items acquired",
+       caption="Data Source: Defense Logistics Agency, LESO Public Information, 'LESO Property Transferred to Participating Agencies'.\nhttps://www.dla.mil/DispositionServices/Offers/Reutilization/LawEnforcement/PublicInformation") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+        plot.caption = element_text(hjust = 0))
+```
+
+### How many agencies have received vision-enhancing equipment?
+
+```{r, fig.height=5, fig.width=5}
+mn_equip_transfers %>%
+  filter(Ship.Year >= 2015 & Ship.Year < 2020) %>%
+  filter(str_detect(Item.Name, '(NIGHT)|(IMAG)|(INFRA)|(THERMAL)|(CAMERA)') & !(str_detect(Item.Name, '(BATTERY)|(ABSORBENT)'))) %>%
+  group_by(Item.Name, Ship.Year) %>%
+  summarise(sum_acquisition_value = sum(Acquisition.Value),
+            acquiring_agencies = paste(unique(LEA_name_cleaned), collapse="\n"),
+            count_of_agencies = length(unique(Station.Name..LEA.))) %>%
+ggplot(., aes(x=Ship.Year, y=Item.Name)) +
+  geom_point(aes(size=count_of_agencies)) +
+  geom_text(aes(label=count_of_agencies), size=2.5, color="#ffffff") +
+  scale_size(name = "Count of agencies", range = c(3, 12)) +
+  ylab(NULL) +
+  xlab('Acquisition Year') +
+  labs(title="Distribution of vision-enhancing items to MN law enforcement agencies",
+       subtitle="Distinct count of agencies receiving specific item w/in a specific year",
+       caption="Data Source: Defense Logistics Agency, LESO Public Information, 'LESO Property Transferred to Participating Agencies'.\nhttps://www.dla.mil/DispositionServices/Offers/Reutilization/LawEnforcement/PublicInformation") +
+  theme(plot.caption = element_text(hjust = 0))
+```
+
+### How many agencies have received vehicles / robots?
+
+```{r, fig.height=5, fig.width=5}
+mn_equip_transfers %>%
+  filter(Ship.Year >= 2015 & Ship.Year < 2020) %>%
+  filter(str_detect(Item.Name, '(VEHIC)|(ROBOT)|(PACKBOT)|(RECON SCOUT)|(REMOT)|(HELICOPTER)|(ARMORED)')) %>%
+  group_by(Item.Name, Ship.Year) %>%
+  summarise(sum_acquisition_value = sum(Acquisition.Value),
+            acquiring_agencies = paste(unique(LEA_name_cleaned), collapse="\n"),
+            count_of_agencies = length(unique(Station.Name..LEA.))) %>%
+ggplot(., aes(x=Ship.Year, y=Item.Name)) +
+  geom_point(aes(size=count_of_agencies)) +
+  geom_text(aes(label=count_of_agencies), size=2.5, color="#ffffff") +
+  scale_size(name = "Count of agencies", range = c(3, 12)) +
+  ylab(NULL) +
+  xlab('Acquisition Year') +
+  labs(title="Distribution of vehicles/robots to MN law enforcement agencies",
+       subtitle="Distinct count of agencies receiving specific item w/in a specific year",
+       caption="Data Source: Defense Logistics Agency, LESO Public Information, 'LESO Property Transferred to Participating Agencies'.\nhttps://www.dla.mil/DispositionServices/Offers/Reutilization/LawEnforcement/PublicInformation") +
+  theme(plot.caption = element_text(hjust = 0))
+```
+
+
+
+### What are the "big ticket" items, broken down by year?
+
+```{r}
+p <- mn_equip_transfers %>%
+  group_by(Ship.Year, Item.Name) %>%
+  summarise(sum_total_acquisitions = sum(Acquisition.Value),
+            count_of_item = n(),
+            acquiring_agencies = paste(unique(Station.Name..LEA.), collapse="<br>")) %>%
+  #filter(sum_total_acquisitions > 80000) %>% # only look at items that totaled over $80000 in that year
+ggplot(., aes(x = Ship.Year, y=sum_total_acquisitions, fill=Item.Name, 
+              text=paste(Item.Name, 
+                         '<br>Count: ', count_of_item, 
+                         '<br>Total value: ', sum_total_acquisitions,
+                         '<br>Acquiring agencies: <br>', acquiring_agencies))) +
+  geom_bar(stat="identity", position="stack") +
+  scale_y_continuous(label=comma) +
+  xlab('Acquisition Year') +
+  ylab('Total acquisition value') +
+  labs(title="Items by year and acquisition value (hover/click/zoom to see details)") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+        legend.position = "none")
+
+ggplotly(p, tooltip="text", width=800, height=600)
+```
+
+
+
+## Analysis of item justifications
+
+LESO also furnishes a dataset--'LESO Information for Shipments (Transfers) and Cancellations of Property'--that contains all requests made by law enforcement agencies since the beginning of the year (January 2020).  This dataset contains a text field labeled `Justification` that contains a description of why the agency is requesting the item.
+
+```{r}
+shipments <- read_excel("./data/LESO_public_information/DISP_Shipments_Cancellations_01012020_03312020.xlsx", sheet="SHIPMENTS")
+
+names(shipments) <- make.names(names(shipments), unique=TRUE) # Automatically clean up column names
+
+shipments$Ship.Date <- as.Date(shipments$Date.Shipped)
+
+mn_shipments <- shipments %>%
+  filter(State == 'MN')
+```
+
+Let's look at some surveillance-related items and examine the justifications given by the various law enforcement agencies for requesting these items from the Department of Defense.
+
+### Vehicles and robots
+
+```{r}
+mn_shipments %>% select(Station.Name..LEA., Item.Name, Quantity, Justification) %>%
+  filter(str_detect(Item.Name, '(VEHIC)|(ROBOT)|(PACKBOT)|(RECON SCOUT)|(REMOT)'))
+```
+
+
+### Night vision/thermal imaging technologies
+
+```{r}
+mn_shipments %>% select(Station.Name..LEA., Item.Name, Quantity, Justification) %>%
+  filter(str_detect(Item.Name, 'NIGHT|IMAG|INFRA'))
+```
+### A few interesting/mundane things
+
+```{r}
+mn_shipments %>% select(Station.Name..LEA., Item.Name, Quantity, Justification) %>%
+  filter(str_detect(Item.Name, 'TRANSL|THERMOMETER|PRINTER|SCREWDRIVER|SWEATER|TV|STOOL'))
+```
+
+
+### The full dataset
+
+In all, Minnesota agencies have made `r length(mn_shipments$Item.Name)` item requests since the start of the year.  Here is the full set of items and their justifications:
+
+```{r}
+mn_shipments %>% select(Station.Name..LEA., Item.Name, Quantity, Justification)
+```
+
+
+
+## References
+
+### Data
+
+* https://www.dla.mil/DispositionServices/Offers/Reutilization/LawEnforcement/PublicInformation/
+
+* https://www.dla.mil/DispositionServices/DDSR/quicklinks/demilcodes/
+

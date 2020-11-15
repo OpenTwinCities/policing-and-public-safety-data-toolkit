@@ -1,5 +1,8 @@
 .DS_Store
 
+# Ignore everything in the raw_data/ folder. 
+# Toolkit users can store data in this folder on their local machines when running example notebooks.
+raw_data/*
 
 # R artifacts to ignore
 

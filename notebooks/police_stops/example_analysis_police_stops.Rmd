@@ -1,0 +1,349 @@
+---
+title: "Policing & Public Safety Data Toolkit: Police Stops Data"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+```{r, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(plotly)
+library(ggthemes)
+library(janitor)
+```
+
+
+## Data background
+
+This example analysis assumes you have access to police stop data from a municipality or local law enforcement agency.  To be able to perform all of the analyses below, your data should include fields similar to what is outlined in the [police stops data dictionary](/references/data_dictionaries/data_dictionary_police_stops.md). 
+
+Because many of the examples below look at how trends vary by race, it is important to understand how "race" information is being collected.  For this example dataset (in this case, from Minneapolis), race information is recorded based on "an officer's perception of a person's race after interacting with the person" (see: ["Using data dashboards", Minneapolis Police Department](https://www.minneapolismn.gov/resident-services/public-safety/police-public-safety/crime-maps-dashboards/using-police-dashboards/)).  It is important to recognize that this "race" information is based on officers' perception _only_, and may not correspond to how an individual self-identifies.  This is an important nuance to keep in mind when interpreting the data below.
+
+## Data prep
+
+The code in the following code block reads in the data.  It also uses the `mutate()` function to perform some transformations on the data to coerce the raw values into a consistent format for analysis.  This code also maps the field names from the example dataset to new names we can use for consistency throughout the rest of the analysis.
+
+You will need to do some work in the `mutate()` portion of the code below.  First, you need to substitute the field names from your own raw data file into relevant places in the `mutate()` function below.  (Your raw column names should be on the right-hand side of the `=` signs in the `mutate()` statements, and the new column names are located on the left-hand side of the `=` signs.)  You may also need to make some adjustments to the `mutate()` function data transformations so they work with your data.  **Note:** The bulk of your effort will likely be spent getting the transformations in this code block set up correctly.  After that, the rest of the analysis should flow smoothly with minimal to no additional coding effort from you.
+
+```{r}
+data_file <- "../../raw_data/Minneapolis_Police_Stop_Data.csv"
+
+police_stops_raw <- read.csv(data_file, stringsAsFactors = FALSE)
+
+police_stops <- police_stops_raw %>% 
+  mutate(
+    stop_date = as.POSIXct(responseDate, format="%Y/%m/%d %H:%M:%S"),
+    hour = hour(stop_date),
+    month = month(stop_date),
+    year = year(stop_date),
+    subject_race = ifelse(race == 'Unknown' | str_trim(race) == '', 'Unknown', race),
+    subject_sex = case_when(
+      gender == 'Male' ~ 'Male',
+      gender == 'Female' ~ 'Female',
+      gender == 'Unknown' | gender == ' ' ~ 'Unknown',
+      gender == 'Gender Non-Conforming' ~ 'Non-Binary',
+      TRUE ~ 'Unknown'),
+    subject_age = NA,
+    search_conducted = ifelse(vehicleSearch == 'YES', 'Y', 'N'),
+    contraband_found = NA,
+    citation_issued = ifelse(str_detect(callDisposition, '(TAG)') | citationIssued == 'YES', 'Y', 'N'),
+    warning_issued = ifelse(str_detect(callDisposition, '(RPR)|(ADV)'), 'Y', 'N'),
+    frisk_performed = ifelse(personSearch == 'YES', 'Y', 'N'),
+    arrest_made = ifelse(str_detect(callDisposition, 'BKG-Booking'), 'Y', 'N'),
+    reason_for_stop = ifelse(reason == '', 'Unknown', reason)
+    ) %>%
+  select(
+    stop_date, hour, month, year, latitude = lat, longitude = long, subject_race, subject_sex,
+    subject_age, search_conducted, contraband_found, citation_issued, warning_issued, frisk_performed,
+    arrest_made, reason_for_stop
+  )
+```
+
+
+## Exploratory analysis
+
+What time frame does the data represent?
+
+```{r}
+print(paste("Minimum date:", min(police_stops$stop_date)))
+print(paste("Maximum date:", max(police_stops$stop_date)))
+```
+
+Do we see any trends in overall number of stops over time?  Is there a seasonal trend in number of stops for different months of the year?
+
+```{r}
+police_stops %>%
+  mutate(year_month = format(stop_date, "%Y-%m")) %>%
+  group_by(year, month, year_month) %>%
+  summarise(count_of_stops = n()) %>%
+ggplot(., aes(x=year_month, y=count_of_stops, group = 1)) +
+  geom_line() + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
+What are the most common sex/gender values represented in the data?  Note the number of stops that have an 'Unknown' value as the recorded sex/gender.  According to the [Minneapolis Police Department website](https://www.minneapolismn.gov/resident-services/public-safety/police-public-safety/crime-maps-dashboards/using-police-dashboards/), "when officers cannot find a suspect, they list the person's race and gender as 'unknown'".
+
+```{r}
+ggplot(police_stops, aes(x=subject_sex)) +
+  geom_bar() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+```
+
+What are the most common race/ethnicity values represented in the data?  Note the number of stops that have an 'Unknown' value as the recorded race/ethnicity:
+
+```{r}
+ggplot(police_stops, aes(x=subject_race)) +
+  geom_bar() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+```
+
+## Reason for stop
+
+What are the most common reasons for stops?
+
+```{r}
+ggplot(police_stops, aes(x=reason_for_stop)) +
+  geom_bar() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+```
+
+Do different sex/gender groups tend to be stopped for different reasons?
+
+```{r}
+ggplot(police_stops, aes(x=subject_sex, fill=reason_for_stop)) +
+  geom_bar(position = "fill") +
+  ggtitle("Reason for stop by sex/gender") +
+  xlab("Subject sex/gender") +
+  ylab("Percent of total stops") +
+  scale_fill_discrete(name = "Reason for stop") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+```
+
+Do different race/ethnicity groups tend to be stopped for different reasons?
+
+```{r}
+ggplot(police_stops, aes(x=subject_race, fill=reason_for_stop)) +
+  geom_bar(position = "fill") +
+  ggtitle("Reason for stop by race/ethnicity") +
+  xlab("Subject race/ethnicity") +
+  ylab("Percent of total stops") +
+  scale_fill_discrete(name = "Reason for stop") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+```
+
+
+## Vehicle search rates
+
+When a person is stopped by the police, how frequently does the stop result in a vehicle search?  The bars in red below represent the proportion of stops that resulted in a search, broken down by the sex/gender of the person subject to the stop:
+
+```{r}
+ggplot(police_stops, aes(x=subject_sex, fill=search_conducted)) +
+  geom_bar(position="fill") +
+  scale_fill_manual(name = "Search conducted", values = c('#aaaaaa','#800000')) +
+  ggtitle("Vehicle search rate by sex/gender") +
+  xlab("Subject sex/gender") +
+  ylab("Percent of total stops") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+```
+
+Some potential disparities in search rates may already seem noticeable to you when viewing the proportion plot above.  It can be difficult to understand, however, whether these differences in search rates represent a systematic pattern, or whether they could be due to chance, and/or small numbers of observations that may skew the proportions visible above but not necessarily be representative of a significant trend.  To understand whether these search rates are significantly different between groups, we need to perform a significance test.  
+
+The following code identifies a 'base group' to use as a comparison, then tests whether our 'comparison groups' have search rates that differ significantly from the base group.  (Note: You may need to change the values in the `base_group` and/or `comparison_groups`, depending on the values available in your dataset.)  The results are phrased as a set of statistical "questions" and resulting "answers", and are printed in human-readable text below:
+
+```{r}
+base_group <- c('Female') # adjust as necessary
+comparison_groups <- c('Male', 'Non-Binary') # adjust as necessary
+
+for (group in comparison_groups) {
+  print('-----------------------------------------------------------------------------------------------')
+  print(paste0("Question: Do ", group, " search rates differ significantly from ", base_group, " search rates?"))
+  print('-----------------------------------------------------------------------------------------------')
+  
+  data_filtered <- police_stops %>% filter(subject_sex %in% c(base_group, group))
+  
+  result <- chisq.test(table(data_filtered$subject_sex, data_filtered$search_conducted))
+  significant <- ifelse(result$p.value < 0.05, 'Answer: Yes, the search rate differs significantly.', 'Answer: No, the search rate does not differ significantly.')
+  print(significant)
+  
+  print('Proportion of stops that resulted in a search (Y) vs no search (N):')
+  summary_table <- data_filtered %>% 
+    tabyl(subject_sex, search_conducted) %>% 
+    adorn_percentages(denominator = "row") %>%
+    adorn_pct_formatting(digits = 2)
+  print(summary_table)
+}
+```
+
+
+The bars in red below represent the proportion of stops that resulted in a search, broken down by the race/ethnicity of the person subject to the stop:
+
+```{r}
+ggplot(police_stops, aes(x=subject_race, fill=search_conducted)) +
+  geom_bar(position="fill") +
+  scale_fill_manual(name = "Search conducted", values = c('#aaaaaa','#800000')) +
+  ggtitle("Vehicle search rate by race/ethnicity") +
+  xlab("Subject race/ethnicity") +
+  ylab("Percent of total stops") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+```
+
+We can conduct a similar significance test for search rates of different race/ethnicity groups to understand whether these differences in search rates represent a systematic and significant pattern.  (Note: You may need to change the values in the `base_group` and/or `comparison_groups`, depending on the values available in your dataset.)
+
+```{r}
+base_group <- c('White') # adjust as necessary
+comparison_groups <- c('Asian', 'Black', 'East African', 'Latino', 'Native American') # adjust as necessary
+
+for (group in comparison_groups) {
+  print('-----------------------------------------------------------------------------------------------')
+  print(paste0("Question: Do ", group, " search rates differ significantly from ", base_group, " search rates?"))
+  print('-----------------------------------------------------------------------------------------------')
+  
+  data_filtered <- police_stops %>% filter(subject_race %in% c(base_group, group))
+  
+  result <- chisq.test(table(data_filtered$subject_race, data_filtered$search_conducted))
+  significant <- ifelse(result$p.value < 0.05, 'Answer: Yes, the search rate differs significantly.', 'Answer: No, the search rate does not differ significantly.')
+  print(significant)
+  
+  print('Proportion of stops that resulted in a search (Y) vs no search (N):')
+  summary_table <- data_filtered %>% 
+    tabyl(subject_race, search_conducted) %>% 
+    adorn_percentages(denominator = "row") %>%
+    adorn_pct_formatting(digits = 2)
+  print(summary_table)
+}
+```
+
+
+## Person search ("frisk") rates
+
+When a person is stopped by the police, how frequently does the stop result in a person search ("frisk")?  The bars in red below represent the proportion of stops that resulted in a frisk being performed, broken down by the sex/gender of the person subject to the stop:
+
+```{r}
+ggplot(police_stops, aes(x=subject_sex, fill=frisk_performed)) +
+  geom_bar(position="fill") +
+  scale_fill_manual(name = "Frisk performed", values = c('#aaaaaa','#800000')) +
+  ggtitle('Person search ("frisk") rate by sex/gender') +
+  xlab("Subject sex/gender") +
+  ylab("Percent of total stops") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+```
+
+We can conduct a significance test for frisk rates of different sex/gender groups to understand whether these differences in search rates represent a systematic and significant pattern:
+
+```{r}
+base_group <- c('Female')
+comparison_groups <- c('Male', 'Non-Binary')
+
+for (group in comparison_groups) {
+  print('-----------------------------------------------------------------------------------------------')
+  print(paste0("Question: Do ", group, " frisk rates differ significantly from ", base_group, " frisk rates?"))
+  print('-----------------------------------------------------------------------------------------------')
+  
+  data_filtered <- police_stops %>% filter(subject_sex %in% c(base_group, group))
+  
+  result <- chisq.test(table(data_filtered$subject_sex, data_filtered$frisk_performed))
+  significant <- ifelse(result$p.value < 0.05, 'Answer: Yes, the frisk rate differs significantly.', 'Answer: No, the frisk rate does not differ significantly.')
+  print(significant)
+  
+  print('Proportion of stops that resulted in a frisk (Y) vs no frisk (N):')
+  summary_table <- data_filtered %>% 
+    tabyl(subject_sex, frisk_performed) %>% 
+    adorn_percentages(denominator = "row") %>%
+    adorn_pct_formatting(digits = 2)
+  print(summary_table)
+}
+```
+
+The bars in red below represent the proportion of stops that resulted in a frisk being performed, broken down by the race/ethnicity of the person subject to the stop:
+
+```{r}
+ggplot(police_stops, aes(x=subject_race, fill=frisk_performed)) +
+  geom_bar(position="fill") +
+  scale_fill_manual(name = "Frisk performed", values = c('#aaaaaa','#800000')) +
+  ggtitle('Person search ("frisk") rate by race/ethnicity') +
+  xlab("Subject race/ethnicity") +
+  ylab("Percent of total stops") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+```
+
+We can conduct a similar significance test for frisk rates of different race/ethnicity groups to understand whether these differences in search rates represent a systematic and significant pattern:
+
+```{r}
+base_group <- c('White')
+comparison_groups <- c('Asian', 'Black', 'East African', 'Latino', 'Native American')
+
+for (group in comparison_groups) {
+  print('-----------------------------------------------------------------------------------------------')
+  print(paste0("Question: Do ", group, " frisk rates differ significantly from ", base_group, " frisk rates?"))
+  print('-----------------------------------------------------------------------------------------------')
+  
+  data_filtered <- police_stops %>% filter(subject_race %in% c(base_group, group))
+  
+  result <- chisq.test(table(data_filtered$subject_race, data_filtered$frisk_performed))
+  significant <- ifelse(result$p.value < 0.05, 'Answer: Yes, the frisk rate differs significantly.', 'Answer: No, the frisk rate does not differ significantly.')
+  print(significant)
+  
+  print('Proportion of stops that resulted in a frisk (Y) vs no frisk (N):')
+  summary_table <- data_filtered %>% 
+    tabyl(subject_race, frisk_performed) %>% 
+    adorn_percentages(denominator = "row") %>%
+    adorn_pct_formatting(digits = 2)
+  print(summary_table)
+}
+```
+
+
+## 'Surplus' stops
+
+When a person is stopped by the police, what proportion of the time does this result in no cause for arrest, summons, or finding?  Using a concept from Lerman & Weaver (2013), we calculate the concept of 'surplus' stops--"stop[s] that did not result in an arrest, summons, [...] finding of contraband" or citation.  The idea of 'surplus' stops is one way of thinking of the concept of 'overpolicing': stops that don't end up yielding an actionable finding against the person being stopped can simply serve to disproportionately aggravate or antagonize specific groups in the community without necessarily contributing to increased public safety.  
+
+The orange bars below represent the proportion of stops that did not result in an arrest or actionable finding against the person being stopped.  A high proportion of surplus stops may indicate that a specific segment of the population is being stopped more frequently than seems to be justified for public safety purposes.
+
+```{r}
+ggplot(police_stops, aes(x=subject_sex, fill=citation_issued)) +
+  geom_bar(position="fill") +
+  scale_fill_manual(name = "Citation issued", values = c('#fdad5c', '#aaaaaa')) +
+  labs(
+    title = "Surplus stops by sex/gender",
+    subtitle = "(Note: 'Surplus' stops occur when citation issued = 'N')"
+    ) +
+  xlab("Subject sex/gender") +
+  ylab("Percent of total stops") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+```
+
+```{r}
+ggplot(police_stops, aes(x=subject_race, fill=citation_issued)) +
+  geom_bar(position="fill") +
+  scale_fill_manual(name = "Citation issued", values = c('#fdad5c', '#aaaaaa')) +
+  labs(
+    title = "Surplus stops by race/ethnicity",
+    subtitle = "(Note: 'Surplus' stops occur when citation issued = 'N')"
+    ) +
+  xlab("Subject race/ethnicity") +
+  ylab("Percent of total stops") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+```
+
+
+## References
+
+**Dataset**: [Police Stop Data, Open Minneapolis](https://opendata.minneapolismn.gov/datasets/police-stop-data)
+
+- [Stanford Open Policing Project](https://openpolicing.stanford.edu/findings/)
+
+- Khan Academy. [Chi-squared significance tests](https://www.khanacademy.org/math/statistics-probability/inference-categorical-data-chi-square-tests)
+
+- Lerman, A.E. & Weaver, V. (2013). ["Staying out of Sight? Concentrated Policing and Local Political Action"](https://doi.org/10.1177/0002716213503085).
