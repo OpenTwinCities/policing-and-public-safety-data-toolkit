@@ -1,8 +1,9 @@
 ---
-title: "Policing & Public Safety Data Toolkit: Police Stops Data"
-output:
-  html_document:
-    df_print: paged
+title: "Police Stops Data"
+subtitle: "Policing & Public Safety Data Toolkit"
+output: 
+  html_notebook:
+    code_folding: hide
 ---
 
 
@@ -30,7 +31,7 @@ The code in the following code block reads in the data.  It also uses the `mutat
 You will need to do some work in the `mutate()` portion of the code below.  First, you need to substitute the field names from your own raw data file into relevant places in the `mutate()` function below.  (Your raw column names should be on the right-hand side of the `=` signs in the `mutate()` statements, and the new column names are located on the left-hand side of the `=` signs.)  You may also need to make some adjustments to the `mutate()` function data transformations so they work with your data.  **Note:** The bulk of your effort will likely be spent getting the transformations in this code block set up correctly.  After that, the rest of the analysis should flow smoothly with minimal to no additional coding effort from you.
 
 ```{r}
-data_file <- "../../raw_data/Minneapolis_Police_Stop_Data.csv"
+data_file <- "../../data/local/Minneapolis_Police_Stop_Data.csv"
 
 police_stops_raw <- read.csv(data_file, stringsAsFactors = FALSE)
 
@@ -51,7 +52,7 @@ police_stops <- police_stops_raw %>%
     search_conducted = ifelse(vehicleSearch == 'YES', 'Y', 'N'),
     contraband_found = NA,
     citation_issued = ifelse(str_detect(callDisposition, '(TAG)') | citationIssued == 'YES', 'Y', 'N'),
-    warning_issued = ifelse(str_detect(callDisposition, '(RPR)|(ADV)'), 'Y', 'N'),
+    warning_issued = ifelse(str_detect(callDisposition, '(RPR)|(ADV)'), 'Y', 'N'), # These are the disposition codes that seem related to a 'warning' in the Minneapolis police data. You may need to interpret local data entry practices to decide how to populate this field.
     frisk_performed = ifelse(personSearch == 'YES', 'Y', 'N'),
     arrest_made = ifelse(str_detect(callDisposition, 'BKG-Booking'), 'Y', 'N'),
     reason_for_stop = ifelse(reason == '', 'Unknown', reason)
@@ -340,7 +341,11 @@ ggplot(police_stops, aes(x=subject_race, fill=citation_issued)) +
 
 ## References
 
-**Dataset**: [Police Stop Data, Open Minneapolis](https://opendata.minneapolismn.gov/datasets/police-stop-data)
+**Dataset:**
+
+- [Police Stop Data, Open Minneapolis](https://opendata.minneapolismn.gov/datasets/police-stop-data)
+
+**Additional references:**
 
 - [Stanford Open Policing Project](https://openpolicing.stanford.edu/findings/)
 

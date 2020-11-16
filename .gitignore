@@ -1,8 +1,13 @@
 .DS_Store
 
-# Ignore everything in the raw_data/ folder. 
+# Ignore everything in the data/local/ folder. 
 # Toolkit users can store data in this folder on their local machines when running example notebooks.
-raw_data/*
+data/local/*
+
+# Ignore .HTML files in the notebooks/ folder. 
+# These should be moved to the reports/ folder when they are rendered and ready for publication.
+notebooks/*/*.html
+
 
 # R artifacts to ignore
 

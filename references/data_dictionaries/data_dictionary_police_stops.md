@@ -21,3 +21,8 @@ Data about police stops of drivers and pedestrians. Used by [police_stop noteboo
 | ----- | ---- | ---- | ---- | ---- |---- |  
 | stop_latitude | string | Latitude of where the stop occurred. | 9-10 | DDD MM SS('N','S','E','W') |---- |  
 | stop_longitude | string | Longitude of where the stop occurred. | 9-10 | DDD MM SS('N','S','E','W') |---- |  
+
+
+## Additional metadata / information
+
+- Minneapolis Police Department, ["Using data dashboards"](https://www.minneapolismn.gov/resident-services/public-safety/police-public-safety/crime-maps-dashboards/using-police-dashboards/) - Gives information on codes found in the 'call disposition' field in the raw data file for Minneapolis police stops.

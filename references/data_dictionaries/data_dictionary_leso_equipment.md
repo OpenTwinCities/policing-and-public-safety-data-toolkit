@@ -50,3 +50,8 @@ Shipments and cancellations of requests for DoD materials in the specified quart
 | Quantity | integer | number of units requested | varies | [0-9]+ | no |   
 | Acquisition Value | float | U.S. dollar amount paid when the item was originally purchased by the government | varies | [0-9]+.[0-9]{2} | no |   
 | Date Requested | datetime64 | date request made; needs further research | 29 | yyyy-mm-ddT00:00:00.000000000 | no |   
+
+
+## Additional metadata / information
+
+- ISO Group, [FSC Catalog](https://www.iso-group.com/Information/FSC/) - Information on codes found in the 'NSN' / 'FSC' / 'NIIN' fields.  Disclaimer: This website is maintained by a private company, but contains information about the FSC codes that are established and maintained by the Department of Defense.
