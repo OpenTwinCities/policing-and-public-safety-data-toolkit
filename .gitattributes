@@ -2,4 +2,4 @@
 *.py linguist-vendored=false
 *.ipynb linguist-vendored=false
 *.Rmd linguist-vendored=false
-*.html linguist-vendored=false
+
