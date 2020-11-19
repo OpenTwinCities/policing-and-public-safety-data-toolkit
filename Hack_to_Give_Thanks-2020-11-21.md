@@ -9,11 +9,11 @@
    + Legal research & resources on open data laws  
 
 **Data analysis (notebooks):**  
- - Using one of the notebooks as a template, try to recreate the analysis using your own data.  
+ - "Peer review" an existing data analysis notebook. Using one of the notebooks as a template, try to recreate the analysis using your own data.  
    + Does it work?  
    + Does the data dictionary make sense?  (If not, add improvements)  
-   + Expand on it and share it back to the repo! *TODO Do we want both notebooks and reports?*  
- - Create a new notebook template and data dictionary on a topic not already covered. Share it back to the repo (including an .HTML file in the reports/ folder).  
+   + Expand on it and share it back to the repo!
+ - Create a new reproducible data analysis (notebook template + data dictionary) on a topic not already covered. Share it back to the repo (including an .HTML file in the reports/ folder).  
    + Use of force  
    + Police personnel records  
    + Hate crimes data  
