@@ -33,9 +33,9 @@
 ### GitHub plan for hackathon:  
 *TODO advice on best way to manage this*
 1. We start with special hackathon branches:  
-    - hackathon_research  
-    - hackathon_data_analysis  
-    - hackathon_ui  
+    - hackathon_research: working primarily in notebooks/ and reports/  
+    - hackathon_data_analysis: working primarily in references/  
+    - hackathon_ui: as needed for the interface  
 
 2. Participants fork the branch they want to work on.  
 3. They submit a pull request to the branch in our main repository.  
