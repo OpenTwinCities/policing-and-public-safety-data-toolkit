@@ -36,3 +36,5 @@ ipython_config.py
 
 # local 
 localnotes/
+.Rproj.user
+policing-and-public-safety-data-toolkit.Rproj

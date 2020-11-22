@@ -1,0 +1,140 @@
+---
+title: "Charge-Population Ratio"
+author: "Nick Pylypiw"
+date: "11/21/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(censusapi)
+library(tidyverse)
+library(RSocrata)
+library(sf)
+library(janitor)
+library(tmap)
+
+colscale_rg <- grDevices::colorRampPalette(c("#33A02C", "#B2DF8A", "#FAFAD2", "#FF7F00", "#E31A1C"), interpolate = "spline")(11)
+
+```
+
+Charge-Population Ratio (CPR) is the percent of incidents with suspects or offenders of a given race divided by the percent of the population composed of that race. The higher this number, the higher the disparity for the identified race A ratio of 1 indicates charges are in proportion with population composition.
+
+The following is a template for how to calculate this metric.
+
+First step is getting crime data. In this exercise, NYC crime data was sourced from https://opendata.cityofnewyork.us/. You'll need a token for the API. https://data.cityofnewyork.us/login.  
+
+
+```{r, message = FALSE, warning = FALSE}
+
+# pull crime data from socrata api
+nyc_data <- read.socrata(
+  "https://data.cityofnewyork.us/resource/uip8-fykc.json",     # year to date 2020
+  # "https://data.cityofnewyork.us/resource/8h9b-rp9u.json",   # historic 2006-present, but api took too long
+  app_token = Sys.getenv('SOCRATA_KEY'),
+  email     = Sys.getenv('EMAIL'),
+  password  = Sys.getenv('SOCRATA_PWORD')
+  ) %>%
+  st_as_sf(coords = c('longitude', 'latitude'), crs = 4269)
+
+```
+
+Since these incidents have lat/long, I want to pull in the shapefile to map this to tract. That is found here https://catalog.data.gov/dataset/tiger-line-shapefile-2018-state-new-york-current-census-tract-state-based
+
+```{r, message = FALSE, warning = FALSE}
+
+# load shapefile
+nyc_sf <- st_read("../data/nyc_shapes/tl_2018_36_tract.shp") %>%
+  clean_names() %>%
+  select(statefp, countyfp, tractce) %>%
+  rename(state = statefp,
+         county = countyfp,
+         tract = tractce)
+
+```
+
+I am mapping the incident to the appropriate tract.
+
+```{r, message = FALSE, warning = FALSE}
+
+nyc_data_sf <- 
+  st_intersection(nyc_data, nyc_sf) %>% 
+  st_set_geometry(NULL) %>%
+  clean_names() 
+
+```
+
+ACS 2018 for race data
+
+```{r, message = FALSE, warning = FALSE}
+
+nyc_race_data <- 
+  getCensus(
+    name = "acs/acs5", 
+    vintage = 2018,
+    vars = c("C02003_001E", "C02003_003E", "C02003_004E"),
+    region = "tract:*",
+    regionin = "state:36"
+    ) %>% 
+  rename(
+    "ct_pop" = "C02003_001E",
+    "ct_white" = "C02003_003E", 
+    "ct_black" = "C02003_004E"
+    ) %>%
+  # calc pct from raw counts
+  mutate(
+    pct_white = ct_white/ct_pop,
+    pct_black = ct_black/ct_pop
+    )
+
+```
+
+Join race data to crime data and calculate CPR.
+
+```{r, message = FALSE, warning = FALSE}
+
+nyc_cpr_tract <-
+  nyc_data_sf %>% 
+  group_by(state, county, tract) %>%
+  summarize(
+    pct_white_arrest = mean(if_else(perp_race == "WHITE", 1, 0)),
+    pct_black_arrest = mean(if_else(perp_race == "BLACK", 1, 0))
+  ) %>% 
+  ungroup() %>%
+  left_join(
+    nyc_race_data %>% 
+      select(-c(ct_pop, ct_white, ct_black)),
+    by = c('state', 'county', 'tract')) %>%
+  mutate(cp_ratio_b = pct_black_arrest / pct_black,
+         cp_ratio_w = pct_white_arrest / pct_white) %>%
+  # Some of these numbers are huge, for now I'm capping at 30
+  mutate(cp_ratio_b = if_else(cp_ratio_b > 30, 30, cp_ratio_b)) %>%
+  inner_join(nyc_sf,
+             by = c('state', 'county', 'tract')) %>% 
+  st_sf()
+
+```
+
+
+
+```{r, message = FALSE, warning = FALSE}
+
+tmap_mode("view")
+
+mymap <- 
+  tm_shape(nyc_cpr_tract, name = 'NYC Tracts') +
+  tm_polygons('cp_ratio_b',
+              alpha = .7,
+              palette = colscale_rg,
+              border.col = "black", 
+              border.alpha = 0.5,
+              title = "Charge-Population Ratio",
+              id = 'label') +
+  tm_layout(title = "Charge-Population Ratio for NYC",
+            title.size = 1.1,
+            title.position = c("center", "top")) 
+
+mymap
+
+```
